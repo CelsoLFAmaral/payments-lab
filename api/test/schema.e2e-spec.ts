@@ -25,4 +25,13 @@ describe('schema', () => {
       ),
     ).rejects.toThrow(/check constraint/);
   });
+
+  it('rejeita amount_cents acima de Number.MAX_SAFE_INTEGER no banco', async () => {
+    await expect(
+      dataSource.query(
+        `INSERT INTO charges (id, amount_cents, currency, customer_id, description, status, idempotency_key, request_hash)
+         VALUES (gen_random_uuid(), 9007199254740992, 'BRL', 'c', 'd', 'pending', 'k-big', repeat('a', 64))`,
+      ),
+    ).rejects.toThrow(/check constraint/);
+  });
 });

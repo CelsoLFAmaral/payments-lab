@@ -78,6 +78,26 @@ describe('charges (e2e)', () => {
     expect([json(res).message].flat().join(' | ')).toMatch(message);
   });
 
+  // Corpo cru: num literal JS 9007199254740993 já viraria ...992 antes do envio
+  it.each([
+    ['9007199254740993', /recebido: 9007199254740992/],
+    ['1e20', /recebido: 100000000000000000000/],
+  ])(
+    'rejeita amount_cents acima de Number.MAX_SAFE_INTEGER: %s',
+    async (rawAmount, message) => {
+      const raw = `{"amount_cents":${rawAmount},"currency":"BRL","customer_id":"cus_1","description":"x"}`;
+      const res = await request(app.getHttpServer())
+        .post('/charges')
+        .set('Idempotency-Key', 'key-big')
+        .set('Content-Type', 'application/json')
+        .send(raw)
+        .expect(400);
+      const text = [json(res).message].flat().join(' | ');
+      expect(text).toMatch(message);
+      expect(text).toMatch(/9007199254740991/);
+    },
+  );
+
   it('replay com mesmo corpo devolve a original com 200', async () => {
     const first = await post('key-2', body).expect(201);
     const replay = await post('key-2', { ...body }).expect(200);

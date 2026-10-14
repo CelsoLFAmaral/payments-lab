@@ -30,7 +30,7 @@ Mudou `infra/rabbitmq/definitions.json` (ex.: argumentos de fila)? Recrie o Rabb
 ## Invariantes
 
 - Cobrança e linha do outbox são gravadas na mesma transação.
-- `amount_cents` é inteiro > 0; nunca usar float para dinheiro.
+- `amount_cents` é inteiro entre 1 e `Number.MAX_SAFE_INTEGER` (DTO e constraint no banco); nunca usar float para dinheiro.
 - Status só sai de `pending`; estados finais não mudam.
 - Todo consumidor é idempotente por `event_id`.
 - Serviços não declaram filas; mudanças de topologia vão em `definitions.json`.
