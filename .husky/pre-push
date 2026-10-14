@@ -1,0 +1,7 @@
+npm --prefix api test
+
+if command -v go >/dev/null 2>&1; then
+  (cd worker && go vet ./... && go test ./...)
+else
+  echo "go não encontrado: pulando testes do worker (o CI roda)"
+fi
