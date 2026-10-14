@@ -26,6 +26,7 @@
 **Decisão:** se a conexão cair fora do shutdown, o processo encerra com código 1 e o Docker reinicia.
 **Motivo:** reconectar e reassinar consumidores corretamente é complexo; reinício limpo é previsível.
 **Desligamento:** o subscriber cancela o consumer e espera os handlers em andamento em `beforeApplicationShutdown`; as conexões só fecham em `onApplicationShutdown`, que o Nest chama depois. Consumer cancelado pelo broker fora do desligamento também encerra o processo. Falha em `ack`/`nack` só é logada: a mensagem volta para a fila e a reentrega é deduplicada por `event_id`.
+**Limites do desligamento:** (a) o relay do outbox para de agendar novos ticks, mas não espera um lote em andamento; se a conexão/DataSource fechar no meio, a transação sofre rollback e o lote é republicado depois (pode duplicar, nunca perde — os consumidores são idempotentes). (b) o drain do consumidor não tem timeout; um handler travado atrasa o desligamento até o SIGKILL do Docker (10s), aceitável porque a reentrega é deduplicada.
 
 ## Gateway simulado determinístico
 **Decisão:** o resultado depende dos dois últimos dígitos de `amount_cents` (13 recusa, 99 erro transitório).
