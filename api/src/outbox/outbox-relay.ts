@@ -12,10 +12,21 @@ import { OutboxEvent } from './outbox-event.entity';
 
 export const OUTBOX_INTERVAL_MS = Symbol('OUTBOX_INTERVAL_MS');
 
+const DEFAULT_OUTBOX_INTERVAL_MS = 1000;
+
+export function parseOutboxIntervalMs(raw: string | undefined): number {
+  if (raw === undefined || !/^\d+$/.test(raw)) {
+    return DEFAULT_OUTBOX_INTERVAL_MS;
+  }
+  const value = Number(raw);
+  return value > 0 ? value : DEFAULT_OUTBOX_INTERVAL_MS;
+}
+
 @Injectable()
 export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(OutboxRelay.name);
   private timer?: NodeJS.Timeout;
+  private stopped = false;
 
   constructor(
     private readonly dataSource: DataSource,
@@ -24,11 +35,21 @@ export class OutboxRelay implements OnApplicationBootstrap, OnModuleDestroy {
   ) {}
 
   onApplicationBootstrap(): void {
-    this.timer = setInterval(() => void this.tick(), this.intervalMs);
+    this.scheduleNext();
   }
 
   onModuleDestroy(): void {
-    clearInterval(this.timer);
+    this.stopped = true;
+    clearTimeout(this.timer);
+  }
+
+  // setTimeout encadeado em vez de setInterval: o próximo ciclo só é agendado
+  // quando o atual termina, evitando abrir transações sobrepostas se a publicação travar.
+  private scheduleNext(): void {
+    if (this.stopped) return;
+    this.timer = setTimeout(() => {
+      void this.tick().finally(() => this.scheduleNext());
+    }, this.intervalMs);
   }
 
   // SKIP LOCKED deixa várias instâncias rodarem o relay sem pegar as mesmas linhas.
