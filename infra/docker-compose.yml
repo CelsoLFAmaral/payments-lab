@@ -56,5 +56,16 @@ services:
       timeout: 5s
       retries: 20
 
+  worker:
+    build: ../worker
+    environment:
+      RABBITMQ_URL: amqp://payments:payments@rabbitmq:5672
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    # on-failure: enquanto o worker é só o esqueleto, ele sai com 0 e não fica reiniciando
+    restart: on-failure
+
 volumes:
   postgres-data:
