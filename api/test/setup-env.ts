@@ -1,2 +1,3 @@
-process.env.DATABASE_URL ??=
-  'postgres://payments:payments@localhost:5432/payments_test';
+import { testDatabaseUrl } from './helpers';
+
+process.env.DATABASE_URL = testDatabaseUrl();
