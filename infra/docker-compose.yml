@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: payments
       POSTGRES_PASSWORD: payments
       POSTGRES_DB: payments
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:5432:5432"]
     volumes:
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - postgres-data:/var/lib/postgresql/data
@@ -19,7 +19,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:4-management-alpine
-    ports: ["5672:5672", "15672:15672"]
+    ports: ["127.0.0.1:5672:5672", "127.0.0.1:15672:15672"]
     volumes:
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
@@ -31,7 +31,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    ports: ["127.0.0.1:6379:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -45,7 +45,7 @@ services:
       DATABASE_URL: postgres://payments:payments@postgres:5432/payments
       RABBITMQ_URL: amqp://payments:payments@rabbitmq:5672
       OUTBOX_INTERVAL_MS: "1000"
-    ports: ["3000:3000"]
+    ports: ["127.0.0.1:3000:3000"]
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }

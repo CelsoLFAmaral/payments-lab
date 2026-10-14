@@ -17,7 +17,7 @@ Exchange `payments` (topic), com alternate exchange `payments.unroutable` (fanou
 |---|---|---|---|
 | `charge.created` | api (outbox) | worker | `charge_id` uuid, `amount_cents` int, `currency` "BRL" |
 | `charge.succeeded` | worker | api | `charge_id` uuid |
-| `charge.failed` | worker | api | `charge_id` uuid, `reason` string não vazia |
+| `charge.failed` | worker | api | `charge_id` uuid, `reason` string não vazia (gateway simulado: `"card_declined"` quando os dois últimos dígitos de `amount_cents` são `13`) |
 
 ## Filas
 

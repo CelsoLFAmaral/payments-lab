@@ -5,14 +5,23 @@ Projeto de estudo/portfólio: serviço de cobranças com NestJS, worker em Go, R
 ## Regras de autoria
 
 - **Não escreva código em `worker/`.** O worker é escrito pelo Celso para aprender Go. Pode explicar, revisar e sugerir quando ele pedir, mas sem aplicar edições.
-- Commits só com autoria do Celso: **nunca** adicionar `Co-Authored-By` ou qualquer menção ao Claude em commits e PRs.
+- Commits com autoria do Celso (sem trailers de coautoria).
 
 ## Como rodar
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d --wait   # postgres, rabbitmq, redis (+ api, worker)
-npm --prefix api run start:dev                              # API local em :3000 (precisa de api/.env ou envs exportadas)
-./scripts/smoke.sh                                          # fluxo ponta a ponta (precisa do worker pronto)
+docker compose -f infra/docker-compose.yml up -d --build --wait   # postgres, rabbitmq, redis, api (o worker esqueleto sai com 0)
+./scripts/smoke-api.sh                                             # API ponta a ponta, simulando o worker
+./scripts/smoke.sh                                                 # fluxo completo; só passa com o worker implementado
+```
+
+API fora do container (hot reload): não há carregamento de `api/.env`; exporte as variáveis no shell. O container `api` ocupa a porta 3000, então pare-o antes:
+
+```bash
+docker compose -f infra/docker-compose.yml stop api
+export DATABASE_URL=postgres://payments:payments@localhost:5432/payments
+export RABBITMQ_URL=amqp://payments:payments@localhost:5672
+npm --prefix api run start:dev
 ```
 
 RabbitMQ management: http://localhost:15672 (payments/payments).
@@ -38,10 +47,13 @@ Mudou `infra/rabbitmq/definitions.json` (ex.: argumentos de fila)? Recrie o Rabb
 ## Testes
 
 ```bash
+npm install                      # na raiz: ativa o hook de pre-push (husky)
 npm --prefix api test            # unitários
-npm --prefix api run test:e2e    # integração; precisa do postgres do compose
+npm --prefix api run test:e2e    # integração; usa o banco payments_test do postgres do compose
 (cd worker && go test ./...)     # worker
 ```
+
+Os e2e recusam rodar se `DATABASE_URL` não apontar para um banco com sufixo `_test` (a suíte apaga o schema).
 
 O `pre-push` roda os unitários da API e os testes do worker (se `go` estiver instalado). O CI roda tudo, incluindo e2e.
 

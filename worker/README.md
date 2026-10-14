@@ -23,7 +23,7 @@ Cada passo termina com testes passando e um commit. Faça em TDD: teste primeiro
 
 ### 1. Gateway simulado (função pura)
 `func Charge(amountCents int64) Outcome` onde `Outcome` é `Approved`, `Declined` ou `TransientError`.
-- dois últimos dígitos `13` → `Declined`
+- dois últimos dígitos `13` → `Declined` (publica `charge.failed` com `reason: "card_declined"`)
 - `99` → `TransientError`
 - demais → `Approved`
 
