@@ -1,0 +1,38 @@
+{
+  "users": [
+    {
+      "name": "payments",
+      "password_hash": "jS8aPBWLakV/3wWEiwqQ95qlgaEEcLD6CxI9bNUReGxPx5KO",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"]
+    }
+  ],
+  "vhosts": [{ "name": "/" }],
+  "permissions": [
+    { "user": "payments", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*" }
+  ],
+  "exchanges": [
+    { "name": "payments", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
+  ],
+  "queues": [
+    {
+      "name": "worker.charge-created", "vhost": "/", "durable": true, "auto_delete": false,
+      "arguments": { "x-dead-letter-exchange": "", "x-dead-letter-routing-key": "worker.charge-created.dlq" }
+    },
+    {
+      "name": "worker.charge-created.retry", "vhost": "/", "durable": true, "auto_delete": false,
+      "arguments": { "x-message-ttl": 5000, "x-dead-letter-exchange": "payments", "x-dead-letter-routing-key": "charge.created" }
+    },
+    { "name": "worker.charge-created.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    {
+      "name": "api.charge-results", "vhost": "/", "durable": true, "auto_delete": false,
+      "arguments": { "x-dead-letter-exchange": "", "x-dead-letter-routing-key": "api.charge-results.dlq" }
+    },
+    { "name": "api.charge-results.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} }
+  ],
+  "bindings": [
+    { "source": "payments", "vhost": "/", "destination": "worker.charge-created", "destination_type": "queue", "routing_key": "charge.created", "arguments": {} },
+    { "source": "payments", "vhost": "/", "destination": "api.charge-results", "destination_type": "queue", "routing_key": "charge.succeeded", "arguments": {} },
+    { "source": "payments", "vhost": "/", "destination": "api.charge-results", "destination_type": "queue", "routing_key": "charge.failed", "arguments": {} }
+  ]
+}
