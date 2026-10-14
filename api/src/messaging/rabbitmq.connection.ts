@@ -1,4 +1,4 @@
-import { Logger, OnModuleDestroy } from '@nestjs/common';
+import { Logger, OnApplicationShutdown } from '@nestjs/common';
 import { ConfirmChannel, connect } from 'amqplib';
 
 export const RABBITMQ_URL = Symbol('RABBITMQ_URL');
@@ -7,7 +7,7 @@ export const CONSUMER_CONNECTION = Symbol('CONSUMER_CONNECTION');
 
 type AmqpConnection = Awaited<ReturnType<typeof connect>>;
 
-export class RabbitMqConnection implements OnModuleDestroy {
+export class RabbitMqConnection implements OnApplicationShutdown {
   private readonly logger: Logger;
   private connection?: AmqpConnection;
   private channelPromise?: Promise<ConfirmChannel>;
@@ -31,7 +31,9 @@ export class RabbitMqConnection implements OnModuleDestroy {
     return this.connection !== undefined;
   }
 
-  async onModuleDestroy(): Promise<void> {
+  // onApplicationShutdown (e não onModuleDestroy): o subscriber drena os
+  // handlers em beforeApplicationShutdown, que o Nest chama entre os dois
+  async onApplicationShutdown(): Promise<void> {
     this.shuttingDown = true;
     await this.connection?.close();
   }

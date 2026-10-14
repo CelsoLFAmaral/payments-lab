@@ -62,11 +62,11 @@ describe('RabbitMqConnection (crash-only)', () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
-  it('não encerra o processo se o close ocorre após o destroy', async () => {
+  it('não encerra o processo se o close ocorre após o shutdown', async () => {
     const { channel } = fakeBroker();
     const rabbit = new RabbitMqConnection('amqp://x', 'publisher');
     await rabbit.confirmChannel();
-    await rabbit.onModuleDestroy();
+    await rabbit.onApplicationShutdown();
     channel.emit('close');
     expect(exitSpy).not.toHaveBeenCalled();
   });
