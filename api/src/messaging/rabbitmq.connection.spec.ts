@@ -9,16 +9,16 @@ const connectMock = connect as unknown as jest.Mock;
 
 function fakeBroker() {
   const channel = Object.assign(new EventEmitter(), {});
-  const connection: EventEmitter & Record<string, jest.Mock> = Object.assign(
-    new EventEmitter(),
-    {
-      createConfirmChannel: jest.fn().mockResolvedValue(channel),
-      close: jest.fn().mockImplementation(() => {
-        connection.emit('close');
-        return Promise.resolve();
-      }),
-    },
-  );
+  const connection: EventEmitter & {
+    createConfirmChannel: jest.Mock;
+    close: jest.Mock;
+  } = Object.assign(new EventEmitter(), {
+    createConfirmChannel: jest.fn().mockResolvedValue(channel),
+    close: jest.fn().mockImplementation(() => {
+      connection.emit('close');
+      return Promise.resolve();
+    }),
+  });
   connectMock.mockResolvedValue(connection);
   return { channel, connection };
 }
