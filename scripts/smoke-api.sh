@@ -8,6 +8,7 @@ MGMT=${MGMT:-http://localhost:15672}
 AUTH=payments:payments
 TIMEOUT=${TIMEOUT:-30}
 QUEUE=worker.charge-created
+UNROUTABLE_QUEUE=payments.unroutable
 
 fail() {
   echo "FALHOU: $*" >&2
@@ -19,8 +20,9 @@ new_uuid() {
 }
 
 queue_info() {
-  curl -sS --fail-with-body -u "$AUTH" "$MGMT/api/queues/%2F/$QUEUE" ||
-    fail "management API não respondeu em $MGMT (fila $QUEUE)"
+  local queue=${1:-$QUEUE}
+  curl -sS --fail-with-body -u "$AUTH" "$MGMT/api/queues/%2F/$queue" ||
+    fail "management API não respondeu em $MGMT (fila $queue)"
 }
 
 create_charge() {
@@ -57,6 +59,7 @@ info=$(queue_info)
 consumers=$(jq '.consumers // 0' <<<"$info")
 (( consumers == 0 )) || fail "$QUEUE tem $consumers consumidor(es); com o worker rodando use scripts/smoke.sh"
 before=$(jq '.messages // 0' <<<"$info")
+unroutable_before=$(queue_info "$UNROUTABLE_QUEUE" | jq '.messages // 0')
 
 charge=$(create_charge)
 charge_id=$(jq -r .id <<<"$charge")
@@ -72,8 +75,7 @@ done
 (( after > before )) || fail "$QUEUE não recebeu charge.created em ${TIMEOUT}s (antes: $before, depois: $after)"
 echo "charge.created na fila ($before -> $after)"
 
-routed=$(publish_succeeded "$charge_id" | jq -r .routed)
-[[ "$routed" == true ]] || fail "charge.succeeded não foi roteado (routed=$routed)"
+publish_succeeded "$charge_id" >/dev/null
 
 status=pending
 for _ in $(seq "$TIMEOUT"); do
@@ -82,5 +84,9 @@ for _ in $(seq "$TIMEOUT"); do
   sleep 1
 done
 [[ "$status" == succeeded ]] || fail "cobrança $charge_id esperava succeeded em ${TIMEOUT}s, está $status"
+
+unroutable_after=$(queue_info "$UNROUTABLE_QUEUE" | jq '.messages // 0')
+(( unroutable_after <= unroutable_before )) ||
+  fail "$UNROUTABLE_QUEUE recebeu mensagem(ns) sem rota (antes: $unroutable_before, depois: $unroutable_after)"
 
 echo "OK: cobrança criada, charge.created publicado e charge.succeeded aplicado"
