@@ -1,6 +1,6 @@
 # Contrato de eventos
 
-Exchange `payments` (topic). Mensagens JSON, `content_type: application/json`, `delivery_mode: 2` (persistente), `message_id = event_id`.
+Exchange `payments` (topic), com alternate exchange `payments.unroutable` (fanout): mensagem publicada sem fila de destino vai para a fila `payments.unroutable` em vez de ser descartada. Mensagens JSON, `content_type: application/json`, `delivery_mode: 2` (persistente), `message_id = event_id`.
 
 ## Envelope
 
@@ -28,6 +28,7 @@ Exchange `payments` (topic). Mensagens JSON, `content_type: application/json`, `
 | `worker.charge-created.dlq` | worker (3ª falha) ou dead letter | inspeção manual |
 | `api.charge-results` | bindings `charge.succeeded`, `charge.failed` | nack sem requeue → `api.charge-results.dlq` |
 | `api.charge-results.dlq` | dead letter | inspeção manual |
+| `payments.unroutable` | alternate exchange `payments.unroutable` | eventos sem binding para a routing key (ex.: tipo novo ou erro de digitação); inspeção manual |
 
 ## Retry no worker
 

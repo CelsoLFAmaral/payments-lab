@@ -29,3 +29,8 @@
 ## Gateway simulado determinístico
 **Decisão:** o resultado depende dos dois últimos dígitos de `amount_cents` (13 recusa, 99 erro transitório).
 **Motivo:** permite testar sucesso, falha e DLQ de forma reproduzível no `scripts/smoke.sh`.
+
+## Alternate exchange para eventos sem rota
+**Contexto:** publicação sem `mandatory` numa exchange sem fila de destino é confirmada pelo broker e descartada; o relay marcaria o evento como publicado e ele sumiria.
+**Decisão:** a exchange `payments` tem `alternate-exchange: payments.unroutable` (fanout) ligada à fila `payments.unroutable`. Evento sem rota fica estacionado para inspeção, sem mudança no publisher.
+**Descartada:** `mandatory` + `basic.return` — o return chega de forma assíncrona e teria de ser correlacionado com o lote confirmado pelo relay, para no fim fazer o mesmo: guardar a mensagem em algum lugar.
