@@ -3,8 +3,7 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
-  "transform": { "^.+\\.ts$": "ts-jest", "^.+\\.js$": "<rootDir>/esm-deps-transform.js" },
-  "transformIgnorePatterns": ["/node_modules/(?!@nestjs/typeorm/)"],
+  "transform": { "^.+\\.(t|j)s$": "ts-jest" },
   "setupFiles": ["<rootDir>/setup-env.ts"],
   "globalSetup": "<rootDir>/global-setup.ts"
 }
