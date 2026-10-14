@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
@@ -55,15 +56,22 @@ describe('ChargeResultsHandler (e2e)', () => {
   const reload = (id: string) =>
     dataSource.getRepository(Charge).findOneByOrFail({ id });
 
-  it('aplica charge.succeeded', async () => {
+  it('aplica charge.succeeded e devolve os ids para o log', async () => {
     const { charge } = await charges.create('k1', body);
-    expect(await handler.handle(succeeded(charge.id))).toBe('applied');
+    const event = succeeded(charge.id);
+    expect(await handler.handle(event)).toEqual({
+      outcome: 'applied',
+      eventId: event.event_id,
+      chargeId: charge.id,
+    });
     expect((await reload(charge.id)).status).toBe('succeeded');
   });
 
   it('aplica charge.failed com motivo', async () => {
     const { charge } = await charges.create('k1', body);
-    expect(await handler.handle(failed(charge.id))).toBe('applied');
+    expect(await handler.handle(failed(charge.id))).toMatchObject({
+      outcome: 'applied',
+    });
     const updated = await reload(charge.id);
     expect(updated.status).toBe('failed');
     expect(updated.failureReason).toBe('card_declined');
@@ -73,14 +81,41 @@ describe('ChargeResultsHandler (e2e)', () => {
     const { charge } = await charges.create('k1', body);
     const event = succeeded(charge.id);
     await handler.handle(event);
-    expect(await handler.handle(event)).toBe('duplicate');
+    expect(await handler.handle(event)).toMatchObject({
+      outcome: 'duplicate',
+    });
   });
 
-  it('não muda cobrança já finalizada', async () => {
+  it('resultado conflitante não muda cobrança finalizada e loga erro', async () => {
+    const errorLog = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
     const { charge } = await charges.create('k1', body);
     await handler.handle(succeeded(charge.id));
-    expect(await handler.handle(failed(charge.id))).toBe('stale');
+    expect(await handler.handle(failed(charge.id))).toMatchObject({
+      outcome: 'stale',
+    });
     expect((await reload(charge.id)).status).toBe('succeeded');
+    expect(errorLog).toHaveBeenCalledWith(
+      expect.stringContaining('conflitante'),
+    );
+    errorLog.mockRestore();
+  });
+
+  it('mesmo status repetido com outro event_id só gera warn', async () => {
+    const warnLog = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
+    const errorLog = jest.spyOn(Logger.prototype, 'error');
+    const { charge } = await charges.create('k1', body);
+    await handler.handle(succeeded(charge.id));
+    expect(await handler.handle(succeeded(charge.id))).toMatchObject({
+      outcome: 'stale',
+    });
+    expect(warnLog).toHaveBeenCalled();
+    expect(errorLog).not.toHaveBeenCalled();
+    warnLog.mockRestore();
+    errorLog.mockRestore();
   });
 
   it('cobrança inexistente lança erro e não registra o evento', async () => {

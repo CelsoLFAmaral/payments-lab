@@ -69,10 +69,12 @@ export class ChargeResultsSubscriber
     message: ConsumeMessage,
   ): Promise<void> {
     try {
-      const outcome = await this.handler.handle(
+      const { outcome, eventId, chargeId } = await this.handler.handle(
         JSON.parse(message.content.toString()),
       );
-      this.logger.log(`Resultado processado: ${outcome}`);
+      this.logger.log(
+        `Resultado processado: ${outcome} (event_id=${eventId}, charge_id=${chargeId})`,
+      );
     } catch (error) {
       // Falha permanente vai para a DLQ; falha transitória volta para a fila
       const permanent = isPermanentFailure(error);

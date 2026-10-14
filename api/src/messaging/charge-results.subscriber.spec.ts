@@ -39,26 +39,40 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+const applied = {
+  outcome: 'applied',
+  eventId: '0b7c6f1e-4a43-4c4e-9a0e-0c1b7d2f5a11',
+  chargeId: '5f0e2b8a-9d3c-4f6e-8a1b-2c3d4e5f6a7b',
+} as const;
+
 describe('ChargeResultsSubscriber.onMessage', () => {
   let errorLog: jest.SpyInstance;
+  let infoLog: jest.SpyInstance;
 
   beforeEach(() => {
     errorLog = jest
       .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => undefined);
-    jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    infoLog = jest
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => undefined);
   });
   afterEach(() => jest.restoreAllMocks());
 
-  it('dá ack quando o handler processa', async () => {
-    const { subscriber, channel } = setup(() => Promise.resolve('applied'));
+  it('dá ack e loga event_id e charge_id quando o handler processa', async () => {
+    const { subscriber, channel } = setup(() => Promise.resolve(applied));
     const msg = message('{}');
     await subscriber.onMessage(channel, msg);
     expect(channel.ack).toHaveBeenCalledWith(msg);
+    expect(infoLog).toHaveBeenCalledWith(
+      expect.stringMatching(
+        new RegExp(`applied.*${applied.eventId}.*${applied.chargeId}`),
+      ),
+    );
   });
 
   it('JSON inválido vai para a DLQ (nack sem requeue)', async () => {
-    const { subscriber, channel } = setup(() => Promise.resolve('applied'));
+    const { subscriber, channel } = setup(() => Promise.resolve(applied));
     const msg = message('não é json');
     await subscriber.onMessage(channel, msg);
     expect(channel.nack).toHaveBeenCalledWith(msg, false, false);
@@ -84,7 +98,7 @@ describe('ChargeResultsSubscriber.onMessage', () => {
   });
 
   it('falha no ack só é logada, sem rejeitar', async () => {
-    const { subscriber, channel } = setup(() => Promise.resolve('applied'));
+    const { subscriber, channel } = setup(() => Promise.resolve(applied));
     channel.ack.mockImplementation(() => {
       throw new Error('Channel closed');
     });
@@ -125,7 +139,7 @@ describe('ChargeResultsSubscriber (ciclo de vida)', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('no desligamento cancela o consumer e espera os handlers em andamento', async () => {
-    const pending = deferred<'applied'>();
+    const pending = deferred<typeof applied>();
     const { subscriber, channel, consumer } = setup(() => pending.promise);
     await subscriber.onApplicationBootstrap();
     const msg = message('{}');
@@ -139,20 +153,20 @@ describe('ChargeResultsSubscriber (ciclo de vida)', () => {
     expect(channel.cancel).toHaveBeenCalledWith('tag-1');
     expect(drained).toBe(false);
 
-    pending.resolve('applied');
+    pending.resolve(applied);
     await shutdown;
     expect(channel.ack).toHaveBeenCalledWith(msg);
   });
 
   it('consumer cancelado pelo broker encerra o processo', async () => {
-    const { subscriber, consumer } = setup(() => Promise.resolve('applied'));
+    const { subscriber, consumer } = setup(() => Promise.resolve(applied));
     await subscriber.onApplicationBootstrap();
     consumer.deliver!(null);
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
   it('cancelamento durante o desligamento não encerra o processo', async () => {
-    const { subscriber, consumer } = setup(() => Promise.resolve('applied'));
+    const { subscriber, consumer } = setup(() => Promise.resolve(applied));
     await subscriber.onApplicationBootstrap();
     await subscriber.beforeApplicationShutdown();
     consumer.deliver!(null);
