@@ -17,6 +17,8 @@ npm --prefix api run start:dev                              # API local em :3000
 
 RabbitMQ management: http://localhost:15672 (payments/payments).
 
+Mudou `infra/rabbitmq/definitions.json` (ex.: argumentos de fila)? Recrie o RabbitMQ — o container não tem volume e recarrega as definições no boot: `docker compose -f infra/docker-compose.yml up -d --force-recreate rabbitmq`. Mudou `infra/postgres/init.sql`? Ele só roda em volume novo: `docker compose -f infra/docker-compose.yml down -v` e suba de novo.
+
 ## Arquitetura
 
 - `api/src/charges`: HTTP de cobranças, idempotência por `Idempotency-Key`, handler de resultados.

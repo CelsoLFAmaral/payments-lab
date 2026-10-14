@@ -19,4 +19,6 @@ docker compose -f infra/docker-compose.yml up -d --build --wait
 ./scripts/smoke.sh
 ```
 
+Mudanças em `infra/rabbitmq/definitions.json` exigem recriar o RabbitMQ (sem volume; definições carregadas no boot): `docker compose -f infra/docker-compose.yml up -d --force-recreate rabbitmq`. Mudanças em `infra/postgres/init.sql` só valem com volume novo: `docker compose -f infra/docker-compose.yml down -v`.
+
 Detalhes: `docs/specs/`, `docs/events.md`, `.claude/decisions.md`.

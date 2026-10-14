@@ -30,7 +30,10 @@
     { "name": "worker.charge-created.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
     {
       "name": "api.charge-results", "vhost": "/", "durable": true, "auto_delete": false,
-      "arguments": { "x-dead-letter-exchange": "", "x-dead-letter-routing-key": "api.charge-results.dlq" }
+      "arguments": {
+        "x-queue-type": "quorum", "x-delivery-limit": 5,
+        "x-dead-letter-exchange": "", "x-dead-letter-routing-key": "api.charge-results.dlq"
+      }
     },
     { "name": "api.charge-results.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
     { "name": "payments.unroutable", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-queue-type": "classic" } }

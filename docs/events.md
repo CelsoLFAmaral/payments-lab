@@ -26,7 +26,7 @@ Exchange `payments` (topic), com alternate exchange `payments.unroutable` (fanou
 | `worker.charge-created` | binding `charge.created` | nack sem requeue → `worker.charge-created.dlq` |
 | `worker.charge-created.retry` | worker publica via default exchange | TTL 5s, depois volta para `charge.created` |
 | `worker.charge-created.dlq` | worker (3ª falha) ou dead letter | inspeção manual |
-| `api.charge-results` | bindings `charge.succeeded`, `charge.failed` | nack sem requeue → `api.charge-results.dlq` |
+| `api.charge-results` | bindings `charge.succeeded`, `charge.failed` | quorum queue; nack sem requeue → `api.charge-results.dlq`; nack com requeue (erro transitório) volta para a fila até `x-delivery-limit` 5 (6 entregas no total), depois vai para a DLQ |
 | `api.charge-results.dlq` | dead letter | inspeção manual |
 | `payments.unroutable` | alternate exchange `payments.unroutable` | eventos sem binding para a routing key (ex.: tipo novo ou erro de digitação); inspeção manual |
 

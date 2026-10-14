@@ -34,3 +34,9 @@
 **Contexto:** publicação sem `mandatory` numa exchange sem fila de destino é confirmada pelo broker e descartada; o relay marcaria o evento como publicado e ele sumiria.
 **Decisão:** a exchange `payments` tem `alternate-exchange: payments.unroutable` (fanout) ligada à fila `payments.unroutable`. Evento sem rota fica estacionado para inspeção, sem mudança no publisher.
 **Descartada:** `mandatory` + `basic.return` — o return chega de forma assíncrona e teria de ser correlacionado com o lote confirmado pelo relay, para no fim fazer o mesmo: guardar a mensagem em algum lugar.
+
+## Quorum queue com delivery-limit nos resultados
+**Contexto:** no consumo de `api.charge-results`, erro não classificado faz `nack(requeue=true)`; sem limite, uma mensagem que sempre falha fica em loop quente para sempre.
+**Decisão:** `api.charge-results` é quorum queue com `x-delivery-limit: 5`. O subscriber continua devolvendo transitórios para a fila; depois de 5 reentregas o broker manda a mensagem para `api.charge-results.dlq` (`x-death.reason = delivery_limit`).
+**Descartada:** fila de retry com TTL, como no worker — mais peças (fila extra, cabeçalho de tentativas, republicação) para um consumidor que só faz I/O no próprio banco.
+**Consequência:** mudar argumentos de fila exige recriar o container do RabbitMQ (não há volume; as definições são recarregadas no boot).
