@@ -12,7 +12,8 @@
       "Bash(git diff*)",
       "Bash(git log*)",
       "Bash(curl -s *localhost*)",
-      "Bash(./scripts/smoke.sh)"
+      "Bash(./scripts/smoke.sh)",
+      "Bash(./scripts/smoke-api.sh)"
     ]
   }
 }
