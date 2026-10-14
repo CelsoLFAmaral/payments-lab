@@ -67,6 +67,11 @@ describe('charges (e2e)', () => {
     await post(null, body).expect(400);
   });
 
+  it('rejeita Idempotency-Key com mais de 255 caracteres', async () => {
+    const res = await post('k'.repeat(256), body).expect(400);
+    expect(json(res).message).toMatch(/255.*recebido: 256/);
+  });
+
   it.each([
     ['float', { ...body, amount_cents: 15.5 }, /recebido: 15.5/],
     ['string', { ...body, amount_cents: '1500' }, /recebido: "1500"/],
@@ -122,10 +127,11 @@ describe('charges (e2e)', () => {
       true,
     );
     expect(new Set(responses.map((res) => json(res).id)).size).toBe(1);
-    const [{ count }]: { count: string }[] = await dataSource.query(
-      'SELECT count(*) FROM charges',
-    );
-    expect(count).toBe('1');
+    const [counts]: { charges: string; outbox: string }[] =
+      await dataSource.query(
+        'SELECT (SELECT count(*) FROM charges) AS charges, (SELECT count(*) FROM outbox) AS outbox',
+      );
+    expect(counts).toEqual({ charges: '1', outbox: '1' });
   });
 
   it('GET retorna a cobrança, 404 se não existe e 400 se id inválido', async () => {
