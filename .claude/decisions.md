@@ -40,3 +40,7 @@
 **Decisão:** `api.charge-results` é quorum queue com `x-delivery-limit: 5`. O subscriber continua devolvendo transitórios para a fila; depois de 5 reentregas o broker manda a mensagem para `api.charge-results.dlq` (`x-death.reason = delivery_limit`).
 **Descartada:** fila de retry com TTL, como no worker — mais peças (fila extra, cabeçalho de tentativas, republicação) para um consumidor que só faz I/O no próprio banco.
 **Consequência:** mudar argumentos de fila exige recriar o container do RabbitMQ (não há volume; as definições são recarregadas no boot).
+
+## Conexões separadas para publicação e consumo
+**Contexto:** publisher e subscriber compartilhavam conexão e canal. Quando o broker dispara alarme de memória ou disco, ele bloqueia as conexões que publicam — e os acks do consumidor, na mesma conexão, ficariam presos junto.
+**Decisão:** duas instâncias de `RabbitMqConnection` (`PUBLISHER_CONNECTION` e `CONSUMER_CONNECTION`), cada uma com sua conexão e confirm channel, ambas crash-only. Seguem a recomendação da documentação do RabbitMQ. A de publicação abre no boot para o `/ready` (que exige as duas abertas) refletir o broker.

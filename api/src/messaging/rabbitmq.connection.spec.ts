@@ -40,14 +40,23 @@ describe('RabbitMqConnection (crash-only)', () => {
 
   it('encerra o processo quando connect() falha', async () => {
     connectMock.mockRejectedValue(new Error('refused'));
-    const rabbit = new RabbitMqConnection('amqp://x');
+    const rabbit = new RabbitMqConnection('amqp://x', 'publisher');
     await rabbit.confirmChannel().catch(() => undefined);
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
+  it('identifica a conexão pelo papel no management', async () => {
+    fakeBroker();
+    const rabbit = new RabbitMqConnection('amqp://x', 'consumer');
+    await rabbit.confirmChannel();
+    expect(connectMock).toHaveBeenCalledWith('amqp://x', {
+      clientProperties: { connection_name: 'api-consumer' },
+    });
+  });
+
   it('encerra o processo quando o canal fecha', async () => {
     const { channel } = fakeBroker();
-    const rabbit = new RabbitMqConnection('amqp://x');
+    const rabbit = new RabbitMqConnection('amqp://x', 'publisher');
     await rabbit.confirmChannel();
     channel.emit('close');
     expect(exitSpy).toHaveBeenCalledWith(1);
@@ -55,7 +64,7 @@ describe('RabbitMqConnection (crash-only)', () => {
 
   it('não encerra o processo se o close ocorre após o destroy', async () => {
     const { channel } = fakeBroker();
-    const rabbit = new RabbitMqConnection('amqp://x');
+    const rabbit = new RabbitMqConnection('amqp://x', 'publisher');
     await rabbit.confirmChannel();
     await rabbit.onModuleDestroy();
     channel.emit('close');
@@ -68,7 +77,7 @@ describe('RabbitMqConnection (crash-only)', () => {
       new Error('channel boom'),
     );
     const logSpy = jest.spyOn(Logger.prototype, 'error');
-    const rabbit = new RabbitMqConnection('amqp://x');
+    const rabbit = new RabbitMqConnection('amqp://x', 'publisher');
     await rabbit.confirmChannel().catch(() => undefined);
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining('channel boom'),

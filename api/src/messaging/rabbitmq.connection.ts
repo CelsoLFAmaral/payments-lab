@@ -1,18 +1,25 @@
-import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfirmChannel, connect } from 'amqplib';
 
 export const RABBITMQ_URL = Symbol('RABBITMQ_URL');
+export const PUBLISHER_CONNECTION = Symbol('PUBLISHER_CONNECTION');
+export const CONSUMER_CONNECTION = Symbol('CONSUMER_CONNECTION');
 
 type AmqpConnection = Awaited<ReturnType<typeof connect>>;
 
-@Injectable()
 export class RabbitMqConnection implements OnModuleDestroy {
-  private readonly logger = new Logger(RabbitMqConnection.name);
+  private readonly logger: Logger;
   private connection?: AmqpConnection;
   private channelPromise?: Promise<ConfirmChannel>;
   private shuttingDown = false;
 
-  constructor(@Inject(RABBITMQ_URL) private readonly url: string) {}
+  // role identifica a conexão nos logs e no management (publisher/consumer)
+  constructor(
+    private readonly url: string,
+    private readonly role: string,
+  ) {
+    this.logger = new Logger(`${RabbitMqConnection.name}:${role}`);
+  }
 
   // Guarda a promise para chamadas concorrentes compartilharem a mesma conexão
   confirmChannel(): Promise<ConfirmChannel> {
@@ -32,7 +39,9 @@ export class RabbitMqConnection implements OnModuleDestroy {
   private async open(): Promise<ConfirmChannel> {
     let connection: AmqpConnection;
     try {
-      connection = await connect(this.url);
+      connection = await connect(this.url, {
+        clientProperties: { connection_name: `api-${this.role}` },
+      });
     } catch (error) {
       return this.crash('Falha ao conectar no RabbitMQ', error as Error);
     }

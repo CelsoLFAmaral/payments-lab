@@ -23,7 +23,7 @@ Mudou `infra/rabbitmq/definitions.json` (ex.: argumentos de fila)? Recrie o Rabb
 
 - `api/src/charges`: HTTP de cobranças, idempotência por `Idempotency-Key`, handler de resultados.
 - `api/src/outbox`: entidades do outbox e `OutboxRelay` (publica a cada `OUTBOX_INTERVAL_MS`).
-- `api/src/messaging`: conexão RabbitMQ, publisher com confirms, subscriber de `api.charge-results`.
+- `api/src/messaging`: duas conexões RabbitMQ (publicação e consumo), publisher com confirms, subscriber de `api.charge-results`.
 - `api/src/health`: `/health` e `/ready`.
 - `infra/rabbitmq/definitions.json`: toda a topologia de mensageria.
 

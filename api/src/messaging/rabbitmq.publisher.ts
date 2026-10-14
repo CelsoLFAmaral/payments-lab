@@ -1,13 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { EventEnvelope } from '../events/event-envelope';
 import { MessagePublisher } from './message-publisher';
-import { RabbitMqConnection } from './rabbitmq.connection';
+import {
+  PUBLISHER_CONNECTION,
+  RabbitMqConnection,
+} from './rabbitmq.connection';
 
 const EXCHANGE = 'payments';
 
 @Injectable()
-export class RabbitMqPublisher implements MessagePublisher {
-  constructor(private readonly connection: RabbitMqConnection) {}
+export class RabbitMqPublisher
+  implements MessagePublisher, OnApplicationBootstrap
+{
+  constructor(
+    @Inject(PUBLISHER_CONNECTION)
+    private readonly connection: RabbitMqConnection,
+  ) {}
+
+  // Abre já no boot: a conexão é preguiçosa e o /ready ficaria falso até o primeiro evento
+  async onApplicationBootstrap(): Promise<void> {
+    await this.connection.confirmChannel();
+  }
 
   async publish(
     routingKey: string,

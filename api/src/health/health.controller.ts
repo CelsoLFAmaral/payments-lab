@@ -1,12 +1,24 @@
-import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Inject,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { RabbitMqConnection } from '../messaging/rabbitmq.connection';
+import {
+  CONSUMER_CONNECTION,
+  PUBLISHER_CONNECTION,
+  RabbitMqConnection,
+} from '../messaging/rabbitmq.connection';
 
 @Controller()
 export class HealthController {
   constructor(
     private readonly dataSource: DataSource,
-    private readonly rabbit: RabbitMqConnection,
+    @Inject(PUBLISHER_CONNECTION)
+    private readonly publisherConnection: RabbitMqConnection,
+    @Inject(CONSUMER_CONNECTION)
+    private readonly consumerConnection: RabbitMqConnection,
   ) {}
 
   @Get('health')
@@ -20,7 +32,8 @@ export class HealthController {
       () => true,
       () => false,
     );
-    const rabbitmq = this.rabbit.isOpen();
+    const rabbitmq =
+      this.publisherConnection.isOpen() && this.consumerConnection.isOpen();
     if (!database || !rabbitmq)
       throw new ServiceUnavailableException({ database, rabbitmq });
     return { database, rabbitmq };

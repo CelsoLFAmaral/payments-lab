@@ -1,11 +1,16 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnApplicationBootstrap,
+} from '@nestjs/common';
 import { Channel, ConsumeMessage } from 'amqplib';
 import {
   ChargeNotFoundError,
   ChargeResultsHandler,
 } from '../charges/charge-results.handler';
 import { MalformedEventError } from '../events/charge-result.parser';
-import { RabbitMqConnection } from './rabbitmq.connection';
+import { CONSUMER_CONNECTION, RabbitMqConnection } from './rabbitmq.connection';
 
 const QUEUE = 'api.charge-results';
 const PREFETCH = 10;
@@ -23,6 +28,7 @@ export class ChargeResultsSubscriber implements OnApplicationBootstrap {
   private readonly logger = new Logger(ChargeResultsSubscriber.name);
 
   constructor(
+    @Inject(CONSUMER_CONNECTION)
     private readonly connection: RabbitMqConnection,
     private readonly handler: ChargeResultsHandler,
   ) {}
