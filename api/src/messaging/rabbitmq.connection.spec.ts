@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { Logger } from '@nestjs/common';
 import { connect } from 'amqplib';
 import { RabbitMqConnection } from './rabbitmq.connection';
 
@@ -8,10 +9,16 @@ const connectMock = connect as unknown as jest.Mock;
 
 function fakeBroker() {
   const channel = Object.assign(new EventEmitter(), {});
-  const connection = Object.assign(new EventEmitter(), {
-    createConfirmChannel: jest.fn().mockResolvedValue(channel),
-    close: jest.fn().mockResolvedValue(undefined),
-  });
+  const connection: EventEmitter & Record<string, jest.Mock> = Object.assign(
+    new EventEmitter(),
+    {
+      createConfirmChannel: jest.fn().mockResolvedValue(channel),
+      close: jest.fn().mockImplementation(() => {
+        connection.emit('close');
+        return Promise.resolve();
+      }),
+    },
+  );
   connectMock.mockResolvedValue(connection);
   return { channel, connection };
 }
@@ -53,5 +60,26 @@ describe('RabbitMqConnection (crash-only)', () => {
     await rabbit.onModuleDestroy();
     channel.emit('close');
     expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it('loga o erro original e fecha a conexão quando o canal falha ao abrir', async () => {
+    const { connection } = fakeBroker();
+    connection.createConfirmChannel.mockRejectedValue(
+      new Error('channel boom'),
+    );
+    const logSpy = jest.spyOn(Logger.prototype, 'error');
+    const rabbit = new RabbitMqConnection('amqp://x');
+    await rabbit.confirmChannel().catch(() => undefined);
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('channel boom'),
+    );
+    expect(connection.close).toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const errorLogIndex = logSpy.mock.calls.findIndex(([m]) =>
+      String(m).includes('channel boom'),
+    );
+    expect(logSpy.mock.invocationCallOrder[errorLogIndex]).toBeLessThan(
+      exitSpy.mock.invocationCallOrder[0],
+    );
   });
 });

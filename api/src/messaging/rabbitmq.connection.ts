@@ -36,33 +36,39 @@ export class RabbitMqConnection implements OnModuleDestroy {
     } catch (error) {
       return this.crash('Falha ao conectar no RabbitMQ', error as Error);
     }
+    if (this.shuttingDown) {
+      await connection.close();
+      throw new Error('Conexão RabbitMQ aberta durante o encerramento');
+    }
+    let channel: ConfirmChannel;
+    try {
+      channel = await connection.createConfirmChannel();
+    } catch (error) {
+      // Sem listeners ainda: o close() não pode disparar exit antes de logar o erro real
+      await connection.close().catch(() => undefined);
+      return this.crash('Falha ao criar canal RabbitMQ', error as Error);
+    }
     this.connection = connection;
     connection.on('error', (error: Error) =>
       this.logger.error(`Erro na conexão RabbitMQ: ${error.message}`),
     );
     // Crash-only: reconectar e reassinar consumidores é complexo; o Docker reinicia o processo
-    connection.on('close', () => this.exitUnlessShuttingDown('Conexão'));
-    try {
-      const channel = await connection.createConfirmChannel();
-      this.watchChannel(channel);
-      return channel;
-    } catch (error) {
-      await connection.close().catch(() => undefined);
-      return this.crash('Falha ao criar canal RabbitMQ', error as Error);
-    }
+    connection.on('close', () => this.exitUnlessShuttingDown('conexão'));
+    this.watchChannel(channel);
+    return channel;
   }
 
   private watchChannel(channel: ConfirmChannel): void {
     channel.on('error', (error: Error) =>
       this.logger.error(`Erro no canal RabbitMQ: ${error.message}`),
     );
-    channel.on('close', () => this.exitUnlessShuttingDown('Canal'));
+    channel.on('close', () => this.exitUnlessShuttingDown('canal'));
   }
 
   private exitUnlessShuttingDown(what: string): void {
     if (this.shuttingDown) return;
     this.logger.error(
-      `${what} RabbitMQ encerrado inesperadamente; finalizando processo`,
+      `RabbitMQ (${what}) encerrou inesperadamente; finalizando processo`,
     );
     process.exit(1);
   }
